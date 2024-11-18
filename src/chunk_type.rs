@@ -2,14 +2,14 @@ use std::{error, fmt::{self, Display}, str::{self, FromStr}};
 
 #[derive(Debug)]
 pub enum ChunkTypeError {
-    InvalidByte,
+    IllegalByte,
     UnexpectedLength,
 }
 
 impl Display for ChunkTypeError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::InvalidByte => write!(f, "Invalid chunk type: bytes must in alphabetic"),
+            Self::IllegalByte => write!(f, "Invalid chunk type: bytes must in alphabetic"),
             Self::UnexpectedLength => write!(f, "Error while converting from str: length must be 4"),
         }
     }
@@ -25,7 +25,7 @@ impl TryFrom<[u8; 4]> for ChunkType {
     
     fn try_from(value: [u8; 4]) -> Result<Self, Self::Error> {
         if value.iter().all(|byte| !byte.is_ascii_alphabetic()) {
-            Err(Self::Error::InvalidByte)
+            Err(Self::Error::IllegalByte)
         } else {
             Ok(Self(u32::from_be_bytes(value)))
         }
@@ -39,17 +39,12 @@ impl FromStr for ChunkType {
         if s.len() != 4 {
             return Err(Self::Err::UnexpectedLength);
         }
-        if !s.is_ascii() {
-            return Err(Self::Err::InvalidByte);
+        if !s.chars().all(|c| c.is_ascii_alphabetic()) {
+            return Err(Self::Err::IllegalByte);
         }
 
         let mut bytes = [0u8; 4];
-        for (i, c) in s.chars().enumerate() {
-            if !c.is_ascii_alphabetic() {
-                return Err(Self::Err::InvalidByte);
-            }
-            bytes[i] = c as u8;
-        }
+        bytes.copy_from_slice(&s.as_bytes());
 
         Ok(Self(u32::from_be_bytes(bytes)))
     }
