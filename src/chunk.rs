@@ -1,4 +1,4 @@
-use std::{fmt::Display, string::FromUtf8Error};
+use std::{error::Error, fmt::Display, string::FromUtf8Error};
 
 use crc::Crc;
 
@@ -9,7 +9,6 @@ pub enum ChunkError {
     IllegalLength,
     IllegalChunkType(ChunkTypeError),
     IncorrectChecksum,
-
 }
 
 impl Display for ChunkError {
@@ -22,11 +21,47 @@ impl Display for ChunkError {
     }
 }
 
+impl Error for ChunkError {}
+
+#[derive(Clone, Debug)]
 pub struct Chunk {
     length: u32,
     chunk_type: ChunkType,
     data: Vec<u8>,
     crc: u32,
+}
+
+impl Chunk {
+    pub fn new(chunk_type: ChunkType, data: Vec<u8>) -> Self {
+        let length = data.len() as u32;
+        let bytes = [&chunk_type.bytes()[..], &data].concat();
+        let checksum = Crc::<u32>::new(&crc::CRC_32_ISO_HDLC).checksum(&bytes);
+        Self { length, chunk_type, data, crc: checksum }
+    }
+
+    pub fn length(&self) -> u32 {
+        self.length
+    }
+
+    pub fn chunk_type(&self) -> &ChunkType {
+        &self.chunk_type
+    }
+
+    pub fn crc(&self) -> u32 {
+        self.crc
+    }
+
+    pub fn data(&self) -> &[u8] {
+        &self.data
+    }
+
+    pub fn data_as_string(&self) -> Result<String, FromUtf8Error> {
+        String::from_utf8(self.data.clone())
+    }
+
+    pub fn as_bytes(&self) -> Vec<u8> {
+        [&self.length.to_be_bytes()[..], &self.chunk_type.bytes(), &self.data, &self.crc.to_be_bytes()].concat()
+    }
 }
 
 impl TryFrom<&[u8]> for Chunk {
@@ -64,47 +99,14 @@ impl TryFrom<&[u8]> for Chunk {
 
 impl Display for Chunk {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let data = self.data_as_string().unwrap_or_else(|_| String::new());
+        let data = self.data_as_string().unwrap_or_else(|_| "/// Invalid UTF-8 String ///".to_string());
 
         write!(f,
-            "Chunk information:\n\tlength: {0},\n\ttype: {1},\n\tdata: {2},\n\tcrc: {3}",
+            "Chunk information:\n\tlength: {},\n\ttype: {},\n\tdata: {},\n\tcrc: {}",
             self.length,
             self.chunk_type,
             data,
             self.crc
         )
-    }
-}
-
-impl Chunk {
-    pub fn new(chunk_type: ChunkType, data: Vec<u8>) -> Self {
-        let length = data.len() as u32;
-        let bytes = [&chunk_type.bytes()[..], &data].concat();
-        let checksum = Crc::<u32>::new(&crc::CRC_32_ISO_HDLC).checksum(&bytes);
-        Self { length, chunk_type, data, crc: checksum }
-    }
-
-    pub fn length(&self) -> u32 {
-        self.length
-    }
-
-    pub fn chunk_type(&self) -> &ChunkType {
-        &self.chunk_type
-    }
-
-    pub fn crc(&self) -> u32 {
-        self.crc
-    }
-
-    pub fn data(&self) -> &[u8] {
-        &self.data
-    }
-
-    pub fn data_as_string(&self) -> Result<String, FromUtf8Error> {
-        Ok(String::from_utf8(self.data.clone())?)
-    }
-
-    pub fn as_bytes(&self) -> Vec<u8> {
-        [&self.length.to_be_bytes()[..], &self.chunk_type.bytes(), &self.data, &self.crc.to_be_bytes()].concat()
     }
 }

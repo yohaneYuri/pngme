@@ -1,4 +1,4 @@
-use std::{error, fmt::{self, Display}, str::{self, FromStr}};
+use std::{error::Error, fmt::{self, Display}, str::{self, FromStr}};
 
 #[derive(Debug)]
 pub enum ChunkTypeError {
@@ -15,10 +15,36 @@ impl Display for ChunkTypeError {
     }
 }
 
-impl error::Error for ChunkTypeError {}
+impl Error for ChunkTypeError {}
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Debug, Clone)]
 pub struct ChunkType(u32);
+
+impl ChunkType {
+    pub fn bytes(&self) -> [u8; 4] {
+        self.0.to_be_bytes()
+    }
+
+    pub fn is_valid(&self) -> bool {
+        self.bytes().iter().all(|&byte| byte.is_ascii_alphabetic()) && self.is_reserved_bit_valid()
+    }
+
+    pub fn is_critical(&self) -> bool {
+        self.bytes()[0].is_ascii_uppercase()
+    }
+
+    pub fn is_public(&self) -> bool {
+        self.bytes()[1].is_ascii_uppercase()
+    }
+
+    pub fn is_reserved_bit_valid(&self) -> bool {
+        self.bytes()[2].is_ascii_uppercase()
+    }
+
+    pub fn is_safe_to_copy(&self) -> bool {
+        self.bytes()[3].is_ascii_lowercase()
+    }
+}
 
 impl TryFrom<[u8; 4]> for ChunkType {
     type Error = ChunkTypeError;
@@ -53,31 +79,5 @@ impl FromStr for ChunkType {
 impl Display for ChunkType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", str::from_utf8(&self.bytes()).unwrap())
-    }
-}
-
-impl ChunkType {
-    pub fn bytes(&self) -> [u8; 4] {
-        self.0.to_be_bytes()
-    }
-
-    pub fn is_valid(&self) -> bool {
-        self.bytes().iter().all(|&byte| byte.is_ascii_alphabetic()) && self.is_reserved_bit_valid()
-    }
-
-    pub fn is_critical(&self) -> bool {
-        self.bytes()[0].is_ascii_uppercase()
-    }
-
-    pub fn is_public(&self) -> bool {
-        self.bytes()[1].is_ascii_uppercase()
-    }
-
-    pub fn is_reserved_bit_valid(&self) -> bool {
-        self.bytes()[2].is_ascii_uppercase()
-    }
-
-    pub fn is_safe_to_copy(&self) -> bool {
-        self.bytes()[3].is_ascii_lowercase()
     }
 }
