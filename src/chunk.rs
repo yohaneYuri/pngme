@@ -23,6 +23,12 @@ impl Display for ChunkError {
 
 impl Error for ChunkError {}
 
+impl From<ChunkTypeError> for ChunkError {
+    fn from(value: ChunkTypeError) -> Self {
+        Self::IllegalChunkType(value)
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct Chunk {
     length: u32,
@@ -82,8 +88,7 @@ impl TryFrom<&[u8]> for Chunk {
         }
 
         buffer.copy_from_slice(&value[4..8]);
-        let chunk_type = ChunkType::try_from(buffer)
-            .map_err(|e| Self::Error::IllegalChunkType(e))?;
+        let chunk_type = ChunkType::try_from(buffer)?;
 
         let data= value[8..length_usize + 8].to_vec();
         buffer.copy_from_slice(&value[8 + length_usize..12 + length_usize]);

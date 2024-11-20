@@ -3,21 +3,27 @@ use std::{error::Error, fmt::Display, str::FromStr};
 use crate::{chunk::{Chunk, ChunkError}, chunk_type::ChunkType};
 
 #[derive(Debug)]
-pub enum PngErr {
+pub enum PngError {
     InvalidChunk(ChunkError),
     IllegalSignature,
 }
 
-impl Display for PngErr {
+impl Display for PngError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            PngErr::InvalidChunk(chunk_error) => write!(f, "{}", chunk_error),
-            PngErr::IllegalSignature => write!(f, "Illegal file signature: is this a png file?"),
+            PngError::InvalidChunk(chunk_error) => write!(f, "{}", chunk_error),
+            PngError::IllegalSignature => write!(f, "Illegal file signature: is this a png file?"),
         }
     }
 }
 
-impl Error for PngErr {}
+impl Error for PngError {}
+
+impl From<ChunkError> for PngError {
+    fn from(value: ChunkError) -> Self {
+        Self::InvalidChunk(value)
+    }
+}
 
 pub struct Png {
     signature: [u8; 8],
@@ -52,11 +58,11 @@ impl Png {
         &self.chunks
     }
 
-    pub fn chunk_by_type(&self, chunk_type: &str) -> Option<Vec<&Chunk>> {
+    pub fn chunk_by_type(&self, chunk_type: &str) -> Vec<&Chunk> {
         if let Ok(chunk_type) = ChunkType::from_str(chunk_type) {
-            Some(self.chunks.iter().filter(|c| *c.chunk_type() == chunk_type).collect())
+            self.chunks.iter().filter(|c| *c.chunk_type() == chunk_type).collect()
         } else {
-            None
+            Vec::new()
         }
     }
 
@@ -69,7 +75,7 @@ impl Png {
 }
 
 impl TryFrom<&[u8]> for Png {
-    type Error = PngErr;
+    type Error = PngError;
     
     fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
         if value.len() < 8 || Self::STANDARD_HEADER != &value[0..8] {
@@ -87,8 +93,7 @@ impl TryFrom<&[u8]> for Png {
                 return Err(Self::Error::InvalidChunk(ChunkError::IllegalLength));
             }
             
-            let chunk = Chunk::try_from(&value[pos..pos + 12 + length])
-                .map_err(|e| Self::Error::InvalidChunk(e))?;
+            let chunk = Chunk::try_from(&value[pos..pos + 12 + length])?;
             chunks.push(chunk);
 
             pos += 12 + length;

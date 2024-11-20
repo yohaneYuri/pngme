@@ -105,7 +105,7 @@ mod tests {
     #[test]
     fn test_chunk_by_type() {
         let png = testing_png();
-        let chunk = png.chunk_by_type("FrSt").unwrap().first().cloned().unwrap();
+        let chunk = png.chunk_by_type("FrSt").first().cloned().unwrap();
         assert_eq!(&chunk.chunk_type().to_string(), "FrSt");
         assert_eq!(&chunk.data_as_string().unwrap(), "I am the first chunk");
     }
@@ -114,7 +114,7 @@ mod tests {
     fn test_append_chunk() {
         let mut png = testing_png();
         png.append_chunk(chunk_from_strings("TeSt", "Message").unwrap());
-        let chunk = png.chunk_by_type("TeSt").unwrap().first().cloned().unwrap();
+        let chunk = png.chunk_by_type("TeSt").first().cloned().unwrap();
         assert_eq!(&chunk.chunk_type().to_string(), "TeSt");
         assert_eq!(&chunk.data_as_string().unwrap(), "Message");
     }
@@ -124,7 +124,7 @@ mod tests {
         let mut png = testing_png();
         png.append_chunk(chunk_from_strings("TeSt", "Message").unwrap());
         png.remove_first_chunk("TeSt").unwrap();
-        let chunk = png.chunk_by_type("TeSt").unwrap().first().cloned();
+        let chunk = png.chunk_by_type("TeSt").first().cloned();
         assert!(chunk.is_none());
     }
 
